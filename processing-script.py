@@ -1,6 +1,6 @@
 """
 Model exported as python.
-Name : model
+Name : secondattempt
 Group : 
 With QGIS : 31607
 """
@@ -13,33 +13,54 @@ from qgis.core import QgsProcessingParameterVectorDestination
 from qgis.core import QgsProcessingParameterRasterDestination
 import processing
 
+#Run after creating directories
 
-class Model(QgsProcessingAlgorithm):
+class Secondattempt(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterRasterLayer('raster', 'raster', defaultValue=None))
-        self.addParameter(QgsProcessingParameterVectorDestination('Counter', 'counter', type=QgsProcessing.TypeVectorLine, createByDefault=True, defaultValue=None))
-        self.addParameter(QgsProcessingParameterRasterDestination('Hillshaded', 'Hillshaded', createByDefault=True, defaultValue=None))
+        self.addParameter(QgsProcessingParameterRasterLayer('rasterinput', 'raster_input', defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorDestination('Contour', 'contour', type=QgsProcessing.TypeVectorLine, createByDefault=True, defaultValue=None))
+        self.addParameter(QgsProcessingParameterRasterDestination('Hill', 'hill', createByDefault=True, defaultValue=None))
 
     def processAlgorithm(self, parameters, context, model_feedback):
         # Use a multi-step feedback, so that individual child algorithm progress reports are adjusted for the
         # overall progress through the model
-        feedback = QgsProcessingMultiStepFeedback(2, model_feedback)
+        feedback = QgsProcessingMultiStepFeedback(4, model_feedback)
         results = {}
         outputs = {}
+
+        # Create Hillshade directory
+        alg_params = {
+            'PATH': 'C:/Users/Dell/Desktop/Hillshade'
+        }
+        outputs['CreateHillshadeDirectory'] = processing.run('native:createdirectory', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(1)
+        if feedback.isCanceled():
+            return {}
 
         # Hillshade
         alg_params = {
             'AZIMUTH': 300,
-            'INPUT': parameters['raster'],
+            'INPUT': parameters['rasterinput'],
             'V_ANGLE': 40,
             'Z_FACTOR': 1,
-            'OUTPUT': parameters['Hillshaded']
+            'OUTPUT': parameters['Hill']
         }
         outputs['Hillshade'] = processing.run('native:hillshade', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Hillshaded'] = outputs['Hillshade']['OUTPUT']
+        results['Hill'] = outputs['Hillshade']['OUTPUT']
 
-        feedback.setCurrentStep(1)
+        feedback.setCurrentStep(2)
+        if feedback.isCanceled():
+            return {}
+
+        # Contour
+        alg_params = {
+            'PATH': 'C:/Users/Dell/Desktop/Contour'
+        }
+        outputs['Contour'] = processing.run('native:createdirectory', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(3)
         if feedback.isCanceled():
             return {}
 
@@ -54,17 +75,17 @@ class Model(QgsProcessingAlgorithm):
             'INTERVAL': 10,
             'NODATA': None,
             'OFFSET': 0,
-            'OUTPUT': parameters['Counter']
+            'OUTPUT': parameters['Contour']
         }
         outputs['Contour'] = processing.run('gdal:contour', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Counter'] = outputs['Contour']['OUTPUT']
+        results['Contour'] = outputs['Contour']['OUTPUT']
         return results
 
     def name(self):
-        return 'model'
+        return 'secondattempt'
 
     def displayName(self):
-        return 'model'
+        return 'secondattempt'
 
     def group(self):
         return ''
@@ -73,4 +94,4 @@ class Model(QgsProcessingAlgorithm):
         return ''
 
     def createInstance(self):
-        return Model()
+        return Secondattempt()
